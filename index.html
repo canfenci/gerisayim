@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Canfenci Geri Sayım | LGS Modu</title>
+    <title>Canfenci Geri Sayım | Rastgele Öğrenci (Tekrarsız)</title>
     <style>
         * {
             margin: 0;
@@ -105,6 +105,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         .mode-btn {
             background: var(--bg-card);
@@ -190,6 +191,10 @@
             border-color: var(--primary);
             color: white;
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .quick-row {
             display: flex;
             flex-wrap: wrap;
@@ -249,10 +254,62 @@
             width: 200px;
             text-align: center;
         }
+        /* Rastgele öğrenci modu stilleri */
+        .random-input-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+            margin: 20px 0;
+            align-items: center;
+        }
+        .random-input-group input {
+            width: 120px;
+            text-align: center;
+            font-size: 1.2rem;
+            padding: 10px;
+        }
+        .random-result {
+            text-align: center;
+            font-size: 6rem;
+            font-weight: 800;
+            font-family: monospace;
+            margin: 30px 0;
+            color: var(--primary);
+            letter-spacing: 4px;
+            transition: transform 0.2s ease;
+        }
+        .random-info {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+        .selected-list {
+            margin-top: 20px;
+            padding: 12px;
+            background: var(--bg-body);
+            border-radius: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .reset-selected-btn {
+            background: var(--danger, #EF4444);
+            color: white;
+            border: none;
+            margin-left: 10px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .random-result.animating {
+            animation: pulse 0.1s infinite;
+        }
         @media (max-width: 650px) {
             .digital-clock { font-size: 3rem; }
             .current-time { font-size: 1.3rem; }
             .manual-item input { width: 60px; }
+            .random-result { font-size: 3rem; }
         }
     </style>
 </head>
@@ -272,7 +329,8 @@
 
     <div class="mode-tabs">
         <button class="mode-btn active" data-mode="timer">⏱️ Süre Sayacı</button>
-        <button class="mode-btn" data-mode="fixed">📅 Sabit Tarih Sayacı</button>
+        <button class="mode-btn" data-mode="fixed">📅 Sabit Tarih</button>
+        <button class="mode-btn" data-mode="random">🎲 Rastgele Öğrenci</button>
     </div>
 
     <!-- Mod 1: Süre tabanlı -->
@@ -300,7 +358,7 @@
         </div>
     </div>
 
-    <!-- Mod 2: Sabit tarih (LGS, sınav, doğum günü vb.) -->
+    <!-- Mod 2: Sabit tarih -->
     <div id="fixedMode" class="mode-content">
         <div class="card">
             <div class="timer-title" id="fixedEventName">Önemli Gün</div>
@@ -318,6 +376,21 @@
                 <button id="pauseFixedBtn">⏸ Durdur</button>
                 <button id="resetFixedBtn">🔄 Sıfırla (hedef temizle)</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Mod 3: Rastgele Öğrenci Seçici (Tekrarsız) -->
+    <div id="randomMode" class="mode-content">
+        <div class="card">
+            <div class="timer-title">🎲 Rastgele Öğrenci Seçici (Tekrarsız)</div>
+            <div class="random-result" id="randomResult">---</div>
+            <div class="random-input-group">
+                <input type="number" id="classSizeInput" placeholder="Sınıf mevcudu" value="40" min="1" max="500">
+                <button id="pickRandomBtn" class="primary">🎯 Rastgele Seç</button>
+                <button id="resetSelectedListBtn" class="reset-selected-btn">🔄 Seçilenleri Sıfırla</button>
+            </div>
+            <div class="selected-list" id="selectedListDisplay">Seçilenler: Hiç seçilmedi</div>
+            <div class="random-info">Butona basınca 5 saniye boyunca sayılar döner, daha önce seçilmemiş bir numara gelir. Tüm numaralar seçildiğinde uyarı verilir.</div>
         </div>
     </div>
 </div>
@@ -481,10 +554,10 @@
         document.getElementById('pauseTimerBtn').onclick = pauseTimerMode;
         document.getElementById('resetTimerBtn').onclick = resetTimerMode;
         
-        // ------ MOD 2: Sabit Tarih (düzeltilmiş yüzde hesabı)------
+        // ------ MOD 2: Sabit Tarih ------
         let fixedTargetDate = null;
         let fixedRemainingSec = 0;
-        let fixedTotalSecAtStart = 0;     // hedef ayarlandığı andaki toplam süre (saniye)
+        let fixedTotalSecAtStart = 0;
         let isActiveFixed = false;
         let fixedInterval = null;
         let fixedEventTitle = "LGS";
@@ -512,21 +585,15 @@
             let diffMs = fixedTargetDate - now;
             let remaining = Math.max(0, Math.floor(diffMs / 1000));
             fixedRemainingSec = remaining;
-            
-            // Yüzde hesaplama: (kalan süre / hedef anındaki toplam süre) * 100
             let percent = 0;
             if (fixedTotalSecAtStart > 0) {
                 percent = (remaining / fixedTotalSecAtStart) * 100;
                 if (percent < 0) percent = 0;
                 if (percent > 100) percent = 100;
-            } else {
-                percent = 0;
             }
-            
             const textColor = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || "#212529";
             const fillColor = getComputedStyle(document.body).getPropertyValue('--analog-fill').trim() || "#3B82F6";
             const bgColor = getComputedStyle(document.body).getPropertyValue('--analog-bg').trim() || "#E5E7EB";
-            
             if (displayMode === "digital") {
                 digitalFixed.innerText = formatTime(remaining);
                 digitalFixed.style.display = "block";
@@ -537,7 +604,6 @@
                 drawAnalog(ctxFixed, analogCanvasFixed, percent, remaining, textColor, fillColor, bgColor);
             }
             endTimeFixed.innerText = `Hedefe kalan: ${formatTime(remaining)}`;
-            
             if (remaining <= 0 && fixedTargetDate) {
                 clearInterval(fixedInterval);
                 isActiveFixed = false;
@@ -590,11 +656,9 @@
             const newTarget = new Date(dateStr);
             if (isNaN(newTarget.getTime())) { alert("Geçersiz tarih"); return; }
             fixedTargetDate = newTarget;
-            // Toplam süreyi hesapla (şu andan hedefe kadar olan saniye)
             const now = new Date();
             let totalSecFixed = Math.max(1, (fixedTargetDate - now) / 1000);
             fixedTotalSecAtStart = totalSecFixed;
-            
             const eventName = document.getElementById('eventNameInput').value.trim();
             if (eventName) {
                 fixedEventTitle = eventName;
@@ -605,6 +669,128 @@
         };
         document.getElementById('pauseFixedBtn').onclick = pauseFixedCountdown;
         document.getElementById('resetFixedBtn').onclick = resetFixedCountdown;
+        
+        // ------ MOD 3: Rastgele Öğrenci Seçici (TEKRARSIZ) ------
+        const classSizeInput = document.getElementById('classSizeInput');
+        const pickRandomBtn = document.getElementById('pickRandomBtn');
+        const resetSelectedListBtn = document.getElementById('resetSelectedListBtn');
+        const randomResultSpan = document.getElementById('randomResult');
+        const selectedListDisplay = document.getElementById('selectedListDisplay');
+        
+        let selectedNumbers = [];      // Seçilen numaralar
+        let currentMax = 0;            // Mevcut sınıf mevcudu
+        let randomInterval = null;
+        let timeoutId = null;
+        
+        function updateSelectedListDisplay() {
+            if (selectedNumbers.length === 0) {
+                selectedListDisplay.innerText = "Seçilenler: Hiç seçilmedi";
+            } else {
+                selectedListDisplay.innerText = `Seçilenler: ${selectedNumbers.sort((a,b)=>a-b).join(', ')} (${selectedNumbers.length}/${currentMax})`;
+            }
+        }
+        
+        function resetSelectedList() {
+            selectedNumbers = [];
+            updateSelectedListDisplay();
+            sendNotification("Canfenci Geri Sayım", "Seçilen öğrenci listesi sıfırlandı.");
+        }
+        
+        function stopRandomAnimation(finalNumber = null) {
+            if (randomInterval) {
+                clearInterval(randomInterval);
+                randomInterval = null;
+            }
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+            pickRandomBtn.disabled = false;
+            randomResultSpan.classList.remove('animating');
+            if (finalNumber !== undefined) {
+                randomResultSpan.innerText = finalNumber;
+            }
+        }
+        
+        function getRandomUnique(max, excludeList) {
+            const available = [];
+            for (let i = 1; i <= max; i++) {
+                if (!excludeList.includes(i)) available.push(i);
+            }
+            if (available.length === 0) return null;
+            const randomIndex = Math.floor(Math.random() * available.length);
+            return available[randomIndex];
+        }
+        
+        function startRandomAnimation(maxNumber) {
+            pickRandomBtn.disabled = true;
+            randomResultSpan.classList.add('animating');
+            
+            // Geçici hızlı değişen sayılar (sadece görsel şov, sonuçta tekrarsız seçim yapılacak)
+            randomInterval = setInterval(() => {
+                const tempRandom = Math.floor(Math.random() * maxNumber) + 1;
+                randomResultSpan.innerText = tempRandom;
+            }, 50);
+            
+            timeoutId = setTimeout(() => {
+                // Tekrarsız rastgele sayı seç
+                const finalNumber = getRandomUnique(maxNumber, selectedNumbers);
+                stopRandomAnimation(finalNumber !== null ? finalNumber : "---");
+                
+                if (finalNumber === null) {
+                    randomResultSpan.innerText = "TÜMÜ SEÇİLDİ!";
+                    alert(`Tüm ${maxNumber} öğrenci numarası seçildi. Listeyi sıfırlayabilirsiniz.`);
+                    playBeep();
+                    return;
+                }
+                
+                selectedNumbers.push(finalNumber);
+                updateSelectedListDisplay();
+                randomResultSpan.innerText = finalNumber;
+                playBeep(); // seçim bittiğinde bip sesi
+                randomResultSpan.style.transform = "scale(1.1)";
+                setTimeout(() => { randomResultSpan.style.transform = "scale(1)"; }, 200);
+                sendNotification("Öğrenci Seçildi", `${finalNumber}. öğrenci seçildi. (Kalan: ${currentMax - selectedNumbers.length})`);
+            }, 5000);
+        }
+        
+        function pickRandomStudent() {
+            let max = parseInt(classSizeInput.value);
+            if (isNaN(max) || max < 1) {
+                alert("Lütfen geçerli bir sınıf mevcudu girin (en az 1)");
+                return;
+            }
+            // Eğer sınıf mevcudu değiştiyse veya ilk kez seçim yapılıyorsa, selectedNumbers'ı sıfırla
+            if (currentMax !== max) {
+                currentMax = max;
+                selectedNumbers = [];
+                updateSelectedListDisplay();
+            }
+            
+            // Eğer tüm sayılar seçildiyse uyarı ver
+            if (selectedNumbers.length >= currentMax) {
+                alert(`Tüm ${currentMax} öğrenci numarası daha önce seçildi. Listeyi sıfırlamak için "Seçilenleri Sıfırla" butonuna basın.`);
+                return;
+            }
+            
+            // Halihazırda animasyon devam ediyorsa durdur
+            stopRandomAnimation();
+            startRandomAnimation(currentMax);
+        }
+        
+        pickRandomBtn.onclick = pickRandomStudent;
+        resetSelectedListBtn.onclick = () => {
+            resetSelectedList();
+            if (currentMax > 0) {
+                // Mevcut sınıf mevcudunu koru, sadece listeyi temizle
+                selectedNumbers = [];
+                updateSelectedListDisplay();
+                randomResultSpan.innerText = "---";
+            }
+        };
+        classSizeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') pickRandomStudent();
+        });
         
         // ------ ORTAK: Tema, görünüm modu, sekme geçişleri ------
         function applyTheme() {
@@ -633,9 +819,12 @@
                 modeBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 modeContents.forEach(c => c.classList.remove('active'));
-                document.getElementById(mode === 'timer' ? 'timerMode' : 'fixedMode').classList.add('active');
+                if (mode === 'timer') document.getElementById('timerMode').classList.add('active');
+                else if (mode === 'fixed') document.getElementById('fixedMode').classList.add('active');
+                else if (mode === 'random') document.getElementById('randomMode').classList.add('active');
                 if (mode === 'timer') updateTimerDisplay();
-                else updateFixedDisplay();
+                else if (mode === 'fixed') updateFixedDisplay();
+                if (mode !== 'random') stopRandomAnimation();
             };
         });
         
@@ -644,6 +833,11 @@
         applyTheme();
         updateTimerDisplay();
         updateFixedDisplay();
+        randomResultSpan.innerText = "---";
+        currentMax = 40; // varsayılan
+        classSizeInput.value = 40;
+        selectedNumbers = [];
+        updateSelectedListDisplay();
     })();
 </script>
 </body>
