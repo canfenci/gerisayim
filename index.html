@@ -55,14 +55,35 @@
             flex-wrap: wrap;
             gap: 12px;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), #a855f7);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
+        /* Başlık stilleri - açık mod varsayılan */
+        .title-can {
+            font-weight: 800;
+            color: #002D54;
         }
+        .title-fenci {
+            font-weight: 800;
+            color: #D4AF37;
+        }
+        .title-rest {
+            font-weight: 400;
+            color: #000000;
+        }
+        body.dark .title-can {
+            color: #E2E8F0;
+        }
+        body.dark .title-fenci {
+            color: #FACC15;
+        }
+        body.dark .title-rest {
+            color: #FFFFFF;
+        }
+        h1 {
+    font-size: 1.8rem;
+    font-weight: 400;
+}
+.title-can, .title-fenci {
+    font-size: 2.0rem;   /* veya istediğin büyüklük */
+}
         .icon-buttons {
             display: flex;
             gap: 12px;
@@ -148,10 +169,16 @@
             font-family: monospace;
             text-align: center;
             letter-spacing: 4px;
-            margin: 20px 0 10px;
+            margin: 20px 0 5px;
             color: var(--text-primary);
             line-height: 1.2;
             word-break: break-word;
+        }
+        .elapsed-time {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
         }
         .analog-container {
             display: flex;
@@ -163,12 +190,7 @@
             width: 100%;
             height: auto;
         }
-        .end-time {
-            text-align: center;
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin: 16px 0;
-        }
+        /* Kalan süre yazısını kaldırdık, bu class'ı artık kullanmıyoruz */
         .btn-group {
             display: flex;
             justify-content: center;
@@ -254,7 +276,6 @@
             width: 200px;
             text-align: center;
         }
-        /* Rastgele öğrenci modu stilleri */
         .random-input-group {
             display: flex;
             flex-wrap: wrap;
@@ -293,7 +314,7 @@
             font-size: 0.9rem;
         }
         .reset-selected-btn {
-            background: #EF4444;
+            background: var(--danger, #EF4444);
             color: white;
             border: none;
             margin-left: 10px;
@@ -316,7 +337,9 @@
 <body>
 <div class="container">
     <div class="top-bar">
-        <h1>⚡ Canfenci Geri Sayım</h1>
+        <h1>
+            <span class="title-can">Can</span><span class="title-fenci">fenci</span> <span class="title-rest">Geri Sayım</span>
+        </h1>
         <div class="icon-buttons">
             <button id="themeToggleBtn">🌓 Tema</button>
             <button id="modeToggleBtn">🔄 Dijital/Analog</button>
@@ -333,15 +356,16 @@
         <button class="mode-btn" data-mode="random">🎲 Rastgele Öğrenci</button>
     </div>
 
-    <!-- Mod 1: Süre tabanlı (değiştirilen kısım) -->
+    <!-- Mod 1: Süre tabanlı -->
     <div id="timerMode" class="mode-content active">
         <div class="card">
             <div class="timer-title" id="timerName">Süre Sayacı</div>
             <div id="digitalViewTimer" class="digital-clock">00:00:00</div>
+            <div id="elapsedViewTimer" class="elapsed-time">Geçen: 00:00:00</div>
             <div id="analogViewTimer" class="analog-container" style="display: none;">
                 <canvas id="analogCanvasTimer" width="260" height="260"></canvas>
             </div>
-            <div class="end-time" id="endTimeTimer">Geçen: 00:00:00</div>   <!-- Değişti: "Geçen" ve ileri sayan süre -->
+            <!-- Kalan süre yazısı kaldırıldı -->
             <div class="quick-row" id="quickButtons"></div>
             <div class="manual-group">
                 <div class="manual-item"><label>Gün</label><input type="number" id="daysInput" min="0" value="0"></div>
@@ -358,7 +382,7 @@
         </div>
     </div>
 
-    <!-- Mod 2: Sabit tarih (hiç değişmedi) -->
+    <!-- Mod 2: Sabit tarih -->
     <div id="fixedMode" class="mode-content">
         <div class="card">
             <div class="timer-title" id="fixedEventName">Önemli Gün</div>
@@ -379,7 +403,7 @@
         </div>
     </div>
 
-    <!-- Mod 3: Rastgele Öğrenci (hiç değişmedi) -->
+    <!-- Mod 3: Rastgele Öğrenci Seçici -->
     <div id="randomMode" class="mode-content">
         <div class="card">
             <div class="timer-title">🎲 Rastgele Öğrenci Seçici (Tekrarsız)</div>
@@ -414,6 +438,8 @@
                 Notification.requestPermission().then(p => { if(p === "granted") notificationPermission = true; });
             } else if (Notification.permission === "granted") notificationPermission = true;
         }
+        
+        // Normal bip (kısa, sentetik)
         function playBeep() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -422,12 +448,22 @@
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.frequency.value = 880;
-                gain.gain.value = 0.2;
+                gain.gain.value = 0.6;
                 osc.start();
-                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-                osc.stop(audioCtx.currentTime + 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
+                osc.stop(audioCtx.currentTime + 0.4);
             } catch(e) { console.warn(e); }
         }
+        
+        // Uzun bip (sıfır anında) - HARİCİ SES DOSYASI (alarm.mp3)
+        function playLongBeep() {
+            try {
+                const audio = new Audio('alarm.mp3');
+                audio.volume = 1.0;
+                audio.play().catch(e => console.warn("Ses çalınamadı:", e));
+            } catch(e) { console.warn(e); }
+        }
+        
         function sendNotification(title, body) {
             if (notificationPermission && Notification.permission === "granted") new Notification(title, { body });
             else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if(p === "granted") new Notification(title, { body }); notificationPermission = (p === "granted"); });
@@ -443,7 +479,6 @@
             else return `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
         }
         
-        // Ortak analog çizim
         function drawAnalog(ctx, canvas, percent, remainingSecs, textColor, fillColor, bgColor) {
             const w = canvas.width, h = canvas.height;
             ctx.clearRect(0, 0, w, h);
@@ -465,28 +500,27 @@
             ctx.fillText(timeText, center-45, center+8);
         }
         
-        // ------ MOD 1: Süre tabanlı (DEĞİŞTİRİLEN) ------
-        let totalSec = 0, remainingSec = 0, elapsedSec = 0; // elapsedSec eklendi (geçen süre)
-        let isActiveTimer = false, timerInterval = null;
+        // ------ MOD 1: Süre tabanlı ------
+        let totalSec = 0, remainingSec = 0, elapsedSec = 0, isActiveTimer = false, timerInterval = null;
         const digitalTimer = document.getElementById('digitalViewTimer');
+        const elapsedTimerSpan = document.getElementById('elapsedViewTimer');
         const analogTimerDiv = document.getElementById('analogViewTimer');
         const analogCanvasTimer = document.getElementById('analogCanvasTimer');
         const ctxTimer = analogCanvasTimer.getContext('2d');
-        const endTimeTimer = document.getElementById('endTimeTimer'); // Bu alan artık geçen süreyi gösterecek
+        // endTimeTimer kullanılmıyor - kaldırıldı
         
-        // Güncelleme: büyük ekran kalan süre, alt kısım geçen süre
         function updateTimerDisplay() {
             const textColor = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || "#212529";
             const fillColor = getComputedStyle(document.body).getPropertyValue('--analog-fill').trim() || "#3B82F6";
             const bgColor = getComputedStyle(document.body).getPropertyValue('--analog-bg').trim() || "#E5E7EB";
             if (totalSec === 0) {
                 digitalTimer.innerText = "00:00:00";
-                endTimeTimer.innerText = "Geçen: 00:00:00";
+                elapsedTimerSpan.innerText = "Geçen: 00:00:00";
                 if (displayMode !== "digital") drawAnalog(ctxTimer, analogCanvasTimer, 0, 0, textColor, fillColor, bgColor);
                 return;
             }
             const rem = Math.max(0, remainingSec);
-            const elapsed = Math.max(0, elapsedSec);
+            const elapsed = Math.min(totalSec, elapsedSec);
             if (displayMode === "digital") {
                 digitalTimer.innerText = formatTime(rem);
                 digitalTimer.style.display = "block";
@@ -497,8 +531,7 @@
                 let percent = (rem / totalSec) * 100;
                 drawAnalog(ctxTimer, analogCanvasTimer, percent, rem, textColor, fillColor, bgColor);
             }
-            // "Geçen: " etiketiyle göster
-            endTimeTimer.innerText = `Geçen: ${formatTime(elapsed)}`;
+            elapsedTimerSpan.innerText = `Geçen: ${formatTime(elapsed)}`;
         }
         
         function startTimerMode() {
@@ -511,28 +544,32 @@
                 if (!isActiveTimer) return;
                 if (remainingSec > 0) {
                     remainingSec--;
-                    elapsedSec = totalSec - remainingSec; // geçen süre = toplam - kalan
+                    elapsedSec++;
+                    if (remainingSec <= 5 && remainingSec > 0) {
+                        playBeep();
+                    }
                     updateTimerDisplay();
                     if (remainingSec === 0) {
                         clearInterval(timerInterval);
                         isActiveTimer = false;
                         sendNotification("Canfenci Geri Sayım", "Süre doldu!");
-                        playBeep();
+                        playLongBeep();
                         updateTimerDisplay();
                     }
                 }
             }, 1000);
         }
+        
         function pauseTimerMode() { isActiveTimer = false; if(timerInterval) clearInterval(timerInterval); timerInterval = null; }
         function resetTimerMode() { 
             isActiveTimer = false; 
             if(timerInterval) clearInterval(timerInterval); 
             timerInterval = null; 
-            remainingSec = totalSec;
+            remainingSec = totalSec; 
             elapsedSec = 0;
             updateTimerDisplay(); 
         }
-        function setTimerFromSeconds(sec, autoStart) {
+        function setTimerFromSeconds(sec, autoStart = false) {
             if (sec <= 0) return;
             totalSec = sec;
             remainingSec = sec;
@@ -540,8 +577,7 @@
             isActiveTimer = false;
             if(timerInterval) clearInterval(timerInterval);
             updateTimerDisplay();
-            // autoStart parametresi artık kullanılmıyor (otomatik başlatma yok)
-            // sadece süreyi ayarlar, Başlat butonuna bırakır.
+            if (autoStart) startTimerMode();
         }
         
         function initQuick() {
@@ -551,7 +587,7 @@
                 const btn = document.createElement('button');
                 btn.innerText = label;
                 btn.onclick = () => { 
-                    setTimerFromSeconds(sec, false); // autoStart = false
+                    setTimerFromSeconds(sec, false);
                     document.getElementById('timerName').innerText = `⏱️ ${label}`; 
                 };
                 container.appendChild(btn);
@@ -571,7 +607,7 @@
         document.getElementById('pauseTimerBtn').onclick = pauseTimerMode;
         document.getElementById('resetTimerBtn').onclick = resetTimerMode;
         
-        // ------ MOD 2: Sabit Tarih (DEĞİŞMEDİ) ------
+        // ------ MOD 2: Sabit Tarih ------
         let fixedTargetDate = null;
         let fixedRemainingSec = 0;
         let fixedTotalSecAtStart = 0;
@@ -625,7 +661,7 @@
                 clearInterval(fixedInterval);
                 isActiveFixed = false;
                 sendNotification(fixedEventTitle, "Hedef zaman geldi! 🎉");
-                playBeep();
+                playLongBeep();
                 digitalFixed.innerText = "SÜRE DOLDU!";
                 endTimeFixed.innerText = "Hedef tarih geçti.";
             }
@@ -687,7 +723,7 @@
         document.getElementById('pauseFixedBtn').onclick = pauseFixedCountdown;
         document.getElementById('resetFixedBtn').onclick = resetFixedCountdown;
         
-        // ------ MOD 3: Rastgele Öğrenci Seçici (DEĞİŞMEDİ) ------
+        // ------ MOD 3: Rastgele Öğrenci Seçici ------
         const classSizeInput = document.getElementById('classSizeInput');
         const pickRandomBtn = document.getElementById('pickRandomBtn');
         const resetSelectedListBtn = document.getElementById('resetSelectedListBtn');
@@ -797,7 +833,7 @@
             if (e.key === 'Enter') pickRandomStudent();
         });
         
-        // ------ ORTAK: Tema, görünüm modu, sekme geçişleri (DEĞİŞMEDİ) ------
+        // ------ ORTAK: Tema, görünüm, sekme ------
         function applyTheme() {
             if (localStorage.getItem("theme") === "dark") document.body.classList.add('dark');
             else document.body.classList.remove('dark');
